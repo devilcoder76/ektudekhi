@@ -9,6 +9,11 @@ let username_input=document.getElementById('username')
 let username=""
 let peerconnections=[]
 let localStream=new MediaStream()
+let messagelist=document.getElementById('messages')
+let message_btn=document.getElementById('message-toggle-btn')
+let send_message_btn=document.getElementById('send-message-btn')
+let message=document.getElementById('message-chat')
+messagelist.scrollTop=messagelist.scrollHeight
 /*let configuration ={
     'iceServers':[{"urls":"stun:stun.l.google.com:19302"},
         {"urls":"stun:stunserver.org"},
@@ -30,6 +35,7 @@ let localStream=new MediaStream()
         }]
 }*/
 let configuration=null
+
 //video 
 navigator.mediaDevices.getUserMedia({'video':true,'audio':true}).then(stream=>{
     localStream=stream
@@ -51,8 +57,8 @@ navigator.mediaDevices.getUserMedia({'video':true,'audio':true}).then(stream=>{
         else audio_btn.innerHTML="Turn audio On"
     })
 })
-//send signal
 
+//send signal
 function send_signal(user_name,action,etc){
     data={
         'username':user_name,
@@ -65,7 +71,7 @@ function send_signal(user_name,action,etc){
 //add video for new peer
 function add_video(user_name){
     new_video_div=document.createElement('div')
-    new_video_div.classList.add("col-md-6")
+    new_video_div.classList.add("col-6")
     new_video=document.createElement('video')
     new_video.className="shadow-lg"
     new_video.autoplay=true
@@ -75,6 +81,19 @@ function add_video(user_name){
     new_video_div.appendChild(new_video)
     video_container.appendChild(new_video_div)
     return new_video
+}
+//adds message
+function AddMessage(text){
+    console.log('in add message')
+    message_new=document.createElement('li')
+    message_new.innerText=text
+    messagelist.appendChild(message_new)
+}
+//send message via WebRTC
+function send_message(user_name,text){
+    console.log("In send message")
+    for(i in peerconnections)peerconnections[i][1].send(user_name+":"+text)
+    
 }
 //send offer to specific channel
 function sendoffer(data){
@@ -91,8 +110,10 @@ function sendoffer(data){
                     etc={'sdp':JSON.stringify(lc.localDescription),
                     'channel':data['etc']['channel']})
                 })
-    rc.addEventListener('message',e=>console.log(e.data))
-    rc.addEventListener('open',e=>console.log('connection opened'))
+    rc.addEventListener('message',e=>AddMessage(e.data))
+    rc.addEventListener('open',e=>{
+        console.log('connection opened')
+    })
 } 
 
 //send Answer to all channels
@@ -102,7 +123,7 @@ function sendanswer(data){
     lc.ondatachannel=ev=>{
         console.log("Invoked")
         lc.rc=ev.channel
-        lc.rc.addEventListener('message',e=>console.log(e.data))
+        lc.rc.addEventListener('message',e=>AddMessage(e.data))
         peerconnections[data['username']]=[lc,lc.rc]
     }
     remote_video=add_video(data['username'])
@@ -190,4 +211,17 @@ join_btn.addEventListener('click',e=>{
         setanswer(data)
     } 
     })  
+})
+//toggle messages
+message_btn.addEventListener('click',e=>{
+    if(messagelist.className=='collapse')messagelist.className='collapse-show'
+    else messagelist.className='collapse'
+})
+//send messages
+send_message_btn.addEventListener('click',e=>{
+    message_text=message.value
+    if (message_text=='')return
+    message.value=""
+    AddMessage(username+":"+message_text)
+    send_message(username,message_text)
 })
